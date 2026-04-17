@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 If (APPLE)
     set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
 endif()
@@ -9,7 +9,7 @@ project(dukto)
 OPTION(USE_SINGLE_APP "Allow only one instance" OFF)
 OPTION(USE_NOTIFY_LIBNOTIFY "Use libnotify for notifications (Linux only)" OFF)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_AUTOMOC ON)
@@ -37,40 +37,16 @@ if(QT_CMAKE_ROOT)
     if(NOT IS_DIRECTORY "${QT_CMAKE_ROOT}")
         message(FATAL_ERROR "The directory specified by QT_CMAKE_ROOT was not found")
     endif()
-    if(IS_DIRECTORY "${QT_CMAKE_ROOT}/Qt6")
-        set(QT_MAJOR_VERSION 6)
-    elseif(IS_DIRECTORY "${QT_CMAKE_ROOT}/Qt5")
-        set(QT_MAJOR_VERSION 5)
-    else()
-        message(FATAL_ERROR "Found neither Qt5 nor Qt6 directory in ${QT_CMAKE_ROOT}")
-    endif()
-elseif(NOT QT_MAJOR_VERSION)
-    find_package(Qt6 QUIET COMPONENTS Core)
-    if (NOT Qt6_FOUND)
-        find_package(Qt5 COMPONENTS Core REQUIRED)
-        set(QT_MAJOR_VERSION 5)
-    else()
-        set(QT_MAJOR_VERSION 6)
-    endif()
-endif(QT_CMAKE_ROOT)
+    list(PREPEND CMAKE_PREFIX_PATH "${QT_CMAKE_ROOT}")
+endif()
 
 set(QT_COMPONENTS Core Gui Network Qml QuickWidgets)
 if(UNIX AND NOT APPLE AND NOT ANDROID)
     list(APPEND QT_COMPONENTS DBus)
 endif()
-if(ANDROID AND QT_MAJOR_VERSION EQUAL 5)
-    list(APPEND QT_COMPONENTS AndroidExtras)
-endif()
-
-if(QT_CMAKE_ROOT)
-    set(QT_COMPONENTS_EXTRA Quick QmlModels Widgets)
-    set(Qt${QT_MAJOR_VERSION}_DIR "${QT_CMAKE_ROOT}/Qt${QT_MAJOR_VERSION}")
-    foreach(temp ${QT_COMPONENTS} ${QT_COMPONENTS_EXTRA})
-        set(Qt${QT_MAJOR_VERSION}${temp}_DIR "${QT_CMAKE_ROOT}/Qt${QT_MAJOR_VERSION}${temp}")
-    endforeach()
-endif()
-
-find_package(Qt${QT_MAJOR_VERSION} COMPONENTS ${QT_COMPONENTS} REQUIRED)
+# Use a single Qt 6.6+ baseline across all platforms, including Android packaging
+# features that rely on QTP0002.
+find_package(Qt6 6.6 COMPONENTS ${QT_COMPONENTS} REQUIRED)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
@@ -130,11 +106,7 @@ set(DUKTO_RESOURCES
     qml.qrc
     qml/common/common.qrc
 )
-if(Qt6_FOUND OR Qt5Core_VERSION VERSION_GREATER_EQUAL "5.14.0")
-    list(APPEND DUKTO_RESOURCES "qml/new/main.qrc")
-else()
-    list(APPEND DUKTO_RESOURCES "qml/old/main.qrc")
-endif()
+list(APPEND DUKTO_RESOURCES "qml/new/main.qrc")
 
 if(USE_UPDATER)
     list(APPEND DUKTO_SRC updateschecker.cpp)
@@ -166,22 +138,10 @@ if(USE_NOTIFY_LIBNOTIFY AND UNIX AND NOT APPLE AND NOT ANDROID)
 endif()
 
 if(ANDROID)
-    #  Qt6:
-    #    /path/to/qt6/bin/qt-cmake -DANDROID_NDK_ROOT=/path/to/ndk -DANDROID_SDK_ROOT=/path/to/sdk srcdir
-    #  Qt5:
-    #    export ANDROID_NDK_ROOT=/path/to/ndk ANDROID_SDK_ROOT=/path/to/sdk
-    #    cmake -DCMAKE_SYSTEM_NAME=Android -DCMAKE_ANDROID_ARCH_ABI=arm64-v8a -DQT_CMAKE_ROOT=/path/to/qt/cmake srcdir
-    if(QT_MAJOR_VERSION GREATER 5)
-        qt_add_executable(${PROJECT_NAME}
-                          ${DUKTO_HDR}
-                          ${DUKTO_SRC}
-                          ${DUKTO_RESOURCES})
-    else()
-        add_library(${PROJECT_NAME} SHARED
-                    ${DUKTO_HDR}
-                    ${DUKTO_SRC}
-                    ${DUKTO_RESOURCES})
-    endif()
+    qt_add_executable(${PROJECT_NAME}
+                      ${DUKTO_HDR}
+                      ${DUKTO_SRC}
+                      ${DUKTO_RESOURCES})
 else()
     add_executable(${PROJECT_NAME}
                    ${DUKTO_HDR}
@@ -197,7 +157,7 @@ endif()
 
 set(QT_LIBRARIES "")
 foreach(temp ${QT_COMPONENTS})
-    list(APPEND QT_LIBRARIES "Qt${QT_MAJOR_VERSION}::${temp}")
+    list(APPEND QT_LIBRARIES "Qt6::${temp}")
 endforeach()
 target_link_libraries(${PROJECT_NAME} PRIVATE ${DUKTO_LIBS} ${QT_LIBRARIES})
 
@@ -216,112 +176,65 @@ If (APPLE)
 endif()
 
 if(ANDROID)
-    if(QT_MAJOR_VERSION EQUAL 5)
-        # find the Android SDK
-        set(ANDROID_SDK_ROOT $ENV{ANDROID_SDK_ROOT})
-        if(NOT ANDROID_SDK_ROOT)
-            message(FATAL_ERROR "You need to set the ANDROID_SDK_ROOT environment variable to your Android SDK directory")
-        endif()
-        message(STATUS "Android SDK: ${ANDROID_SDK_ROOT}")
-    
-        # find the Android NDK
-        set(ANDROID_NDK_ROOT $ENV{ANDROID_NDK_ROOT})
-        if(NOT ANDROID_NDK_ROOT)
-            message(FATAL_ERROR "You need to set the ANDROID_NDK_ROOT environment variable to your Android NDK directory")
-        endif()
-        message(STATUS "Android NDK: ${ANDROID_NDK_ROOT}")
-    
-        get_filename_component(QT_BINARY_ROOT "${Qt5Core_DIR}/../../../bin" ABSOLUTE)
-    
-        add_custom_target("${PROJECT_NAME}_apkdir"
-            COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_CURRENT_BINARY_DIR}/apk"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/apk"
-            DEPENDS "${PROJECT_NAME}"
-            COMMENT "Preparing APK directory"
-        )
-        add_custom_target("${PROJECT_NAME}_apkconf"
-            COMMAND "${QT_BINARY_ROOT}/qmake"
-                "${CMAKE_CURRENT_SOURCE_DIR}/dukto.pro"
-                "-spec" "android-clang"
-                "CONFIG+=qtquickcompiler"
-                "ANDROID_ABIS=${ANDROID_ABI}"
-            DEPENDS "${PROJECT_NAME}_apkdir"
-            WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/apk"
-            COMMENT "Generating APK configuration"
-        )
-        add_custom_target(apk ALL
-            COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_CURRENT_BINARY_DIR}/apk/libs/${ANDROID_ABI}"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/apk/libs/${ANDROID_ABI}"
-            COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/libdukto.so" "${CMAKE_CURRENT_BINARY_DIR}/apk/libs/${ANDROID_ABI}/libDukto_${ANDROID_ABI}.so"
-            COMMAND "${QT_BINARY_ROOT}/androiddeployqt"
-                --output "${CMAKE_CURRENT_BINARY_DIR}/apk"
-                --input android-Dukto-deployment-settings.json
-                --gradle
-            DEPENDS "${PROJECT_NAME}_apkconf"
-            WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/apk"
-            COMMENT "Generating APK"
-        )
-    elseif(QT_MAJOR_VERSION EQUAL 6)
-        if(Qt6Core_VERSION VERSION_GREATER_EQUAL "6.6.0")
-            qt6_policy(SET QTP0002 NEW)
-        endif()
-        # get version
-        file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.h" ver)
-        string(REGEX MATCH "#define VERSION_MAJOR ([0-9]+)" _ ${ver})
-        set(ver_major ${CMAKE_MATCH_1})
-        string(REGEX MATCH "#define VERSION_MINOR ([0-9]+)" _ ${ver})
-        set(ver_minor ${CMAKE_MATCH_1})
-        string(REGEX MATCH "#define VERSION_PATCH ([0-9]+)" _ ${ver})
-        set(ver_patch ${CMAKE_MATCH_1})
-        # get target abis
-        if(QT_ANDROID_BUILD_ALL_ABIS)
-            set(target_abis ${QT_DEFAULT_ANDROID_ABIS})
-        else()
-            set(target_abis ${QT_ANDROID_ABIS})
-        endif()
-        # calculate abi code
-        set(abi_code 0)
-        foreach(abi IN ITEMS ${target_abis})
-            if(abi STREQUAL "armeabi-v7a")
-                math(EXPR abi_code "${abi_code} | 1")
-            elseif(abi STREQUAL "arm64-v8a")
-                math(EXPR abi_code "${abi_code} | 2")
-            elseif(abi STREQUAL "x86_64")
-                math(EXPR abi_code "${abi_code} | 4")
-            elseif(abi STREQUAL "x86")
-                math(EXPR abi_code "${abi_code} | 8")
-            else()
-                message(FATAL_ERROR "Unknown ABI: ${abi}")
-            endif()
-        endforeach()
-        # calculate version code
-        set(ver_code "${ver_major}")
-        string(LENGTH "${ver_minor}" len)
-        if(len EQUAL 1)
-            set(ver_code "${ver_code}0${ver_minor}")
-        else()
-            set(ver_code "${ver_code}${ver_minor}")
-        endif()
-        string(LENGTH "${ver_patch}" len)
-        if(len EQUAL 1)
-            set(ver_code "${ver_code}0${ver_patch}")
-        else()
-            set(ver_code "${ver_code}${ver_patch}")
-        endif()
-        string(LENGTH "${abi_code}" len)
-        if(len EQUAL 1)
-            set(ver_code "${ver_code}260${abi_code}")
-        else()
-            set(ver_code "${ver_code}26${abi_code}")
-        endif()
-    
-        set_target_properties(dukto PROPERTIES
-            QT_ANDROID_MIN_SDK_VERSION 26
-            QT_ANDROID_VERSION_NAME "${ver_major}.${ver_minor}.${ver_patch}"
-            QT_ANDROID_VERSION_CODE "${ver_code}"
-            QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android/qt6"
-        )
+    # QTP0002 enables Qt6 Android packaging behavior that correctly resolves
+    # package source directories when building for one or multiple ABIs.
+    qt6_policy(SET QTP0002 NEW)
+    # get version
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.h" ver)
+    string(REGEX MATCH "#define VERSION_MAJOR ([0-9]+)" _ ${ver})
+    set(ver_major ${CMAKE_MATCH_1})
+    string(REGEX MATCH "#define VERSION_MINOR ([0-9]+)" _ ${ver})
+    set(ver_minor ${CMAKE_MATCH_1})
+    string(REGEX MATCH "#define VERSION_PATCH ([0-9]+)" _ ${ver})
+    set(ver_patch ${CMAKE_MATCH_1})
+    # get target abis
+    if(QT_ANDROID_BUILD_ALL_ABIS)
+        set(target_abis ${QT_DEFAULT_ANDROID_ABIS})
+    else()
+        set(target_abis ${QT_ANDROID_ABIS})
     endif()
+    # calculate abi code
+    set(abi_code 0)
+    foreach(abi IN ITEMS ${target_abis})
+        if(abi STREQUAL "armeabi-v7a")
+            math(EXPR abi_code "${abi_code} | 1")
+        elseif(abi STREQUAL "arm64-v8a")
+            math(EXPR abi_code "${abi_code} | 2")
+        elseif(abi STREQUAL "x86_64")
+            math(EXPR abi_code "${abi_code} | 4")
+        elseif(abi STREQUAL "x86")
+            math(EXPR abi_code "${abi_code} | 8")
+        else()
+            message(FATAL_ERROR "Unknown ABI: ${abi}")
+        endif()
+    endforeach()
+    # calculate version code
+    set(ver_code "${ver_major}")
+    string(LENGTH "${ver_minor}" len)
+    if(len EQUAL 1)
+        set(ver_code "${ver_code}0${ver_minor}")
+    else()
+        set(ver_code "${ver_code}${ver_minor}")
+    endif()
+    string(LENGTH "${ver_patch}" len)
+    if(len EQUAL 1)
+        set(ver_code "${ver_code}0${ver_patch}")
+    else()
+        set(ver_code "${ver_code}${ver_patch}")
+    endif()
+    string(LENGTH "${abi_code}" len)
+    if(len EQUAL 1)
+        set(ver_code "${ver_code}260${abi_code}")
+    else()
+        set(ver_code "${ver_code}26${abi_code}")
+    endif()
+
+    set_target_properties(dukto PROPERTIES
+        QT_ANDROID_MIN_SDK_VERSION 26
+        QT_ANDROID_VERSION_NAME "${ver_major}.${ver_minor}.${ver_patch}"
+        QT_ANDROID_VERSION_CODE "${ver_code}"
+        QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android/qt6"
+    )
 endif(ANDROID)
 
 if(UNIX AND NOT APPLE AND NOT ANDROID)

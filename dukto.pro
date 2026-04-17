@@ -1,11 +1,7 @@
 QT += core gui network qml quickwidgets
 linux:!android:QT += dbus
 
-greaterThan(QT_MAJOR_VERSION, 5) {
-    CONFIG += c++17
-} else {
-    CONFIG += c++11
-}
+CONFIG += c++17
 
 #============Compiling Options=============
 
@@ -97,13 +93,7 @@ RESOURCES += \
     qml.qrc \
     qml/common/common.qrc
 
-greaterThan(QT_MAJOR_VERSION, 5) {
-    RESOURCES += qml/new/main.qrc
-} else:lessThan(QT_MINOR_VERSION, 14) {
-    RESOURCES += qml/old/main.qrc
-} else {
-    RESOURCES += qml/new/main.qrc
-}
+RESOURCES += qml/new/main.qrc
 
 contains(DEFINES, UPDATER) {
     SOURCES += updateschecker.cpp
@@ -136,21 +126,9 @@ mac {
 }
 
 android {
-    lessThan(QT_MAJOR_VERSION, 6): QT += androidextras
     TARGET = Dukto
 
-    lessThan(QT_MAJOR_VERSION, 6) {
-        ANDROID_MIN_SDK_VERSION = 21
-    } else {
-        ANDROID_MIN_SDK_VERSION = 26
-    }
-
-    lessThan(QT_MAJOR_VERSION, 6) {
-        ANDROID_ABIS=$$replace(ANDROID_ABIS, arm-linux-android-elf-32bit, armeabi-v7a)
-        ANDROID_ABIS=$$replace(ANDROID_ABIS, arm-linux-android-elf-64bit, arm64-v8a)
-        ANDROID_ABIS=$$replace(ANDROID_ABIS, x86-linux-android-elf-32bit, x86)
-        ANDROID_ABIS=$$replace(ANDROID_ABIS, x86-linux-android-elf-64bit, x86_64)
-    }
+    ANDROID_MIN_SDK_VERSION = 26
 
     ANDROID_VERSION_NAME = $$VERSION
     defineReplace(androidVersionCode) {
@@ -172,13 +150,8 @@ android {
     }
     ANDROID_VERSION_CODE = $$androidVersionCode($$VERSION)
 
-    greaterThan(QT_MAJOR_VERSION, 5) {
-        ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android/qt6
-        OTHER_FILES += $$PWD/android/qt6/AndroidManifest.xml
-    } else {
-        ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android/qt5
-        OTHER_FILES += $$PWD/android/qt5/AndroidManifest.xml
-    }
+    ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android/qt6
+    OTHER_FILES += $$PWD/android/qt6/AndroidManifest.xml
     SOURCES += androidutils.cpp
     HEADERS += androidutils.h
 }
