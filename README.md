@@ -1,6 +1,6 @@
 # Dukto
 
-Dukto is an easy file transfer tool for LAN. It was created by Emanuele Colombo, and ported to Qt 5/6 by me and [other contributors](https://github.com/xuzhen/dukto/graphs/contributors).
+Dukto is an easy file transfer tool for LAN. It was created by Emanuele Colombo, and ported to Qt6 by me and [other contributors](https://github.com/xuzhen/dukto/graphs/contributors).
 
 Now it supports Windows, Linux, MacOS and Android.
 
@@ -12,7 +12,7 @@ Dukto transfers files and text without encryption and is only designed for use i
 #### Windows
 Portable versions can be downloaded from [the releases page](https://github.com/xuzhen/dukto/releases)
 
-The Qt6 version supports Windows 10+ only. If you are still using Windows 7, download the Qt5 version instead.
+The current release supports Windows 10+ only.
 
 If you can not open the 7z files, visit https://7-zip.org/ and install 7-zip
 
@@ -29,8 +29,6 @@ APKs can be downloaded from [the releases page](https://github.com/xuzhen/dukto/
 
 The `dukto_*_qt6.apk` supports Android 8.0 (Oreo) and later.
 
-The `dukto_*_qt5.apk` supports Android 5.0 (Lollipop) and later.
-
 #### Ubuntu and derivatives:
 Use [this PPA](https://launchpad.net/~xuzhen666/+archive/ubuntu/dukto) 
 
@@ -39,7 +37,8 @@ Use [this PPA](https://launchpad.net/~xuzhen666/+archive/ubuntu/dukto)
 
 #### Build Dependencies
 
-* Qt 5.3+
+* Qt 6.6+
+* CMake 3.21+ (for CMake builds)
 * libnotify (optional, Linux only)
 * Android SDK and NDK (Android only)
 
@@ -47,14 +46,14 @@ Use [this PPA](https://launchpad.net/~xuzhen666/+archive/ubuntu/dukto)
 
 Run the following command in the source code directory to build:
 
-* QMake 
+* QMake (Qt6)
 ```sh
-mkdir build && cd build && qmake .. && make
+mkdir build && cd build && qmake6 .. && make
 ```
 
-* CMake 
+* CMake (Qt6)
 ```sh
-mkdir build && cd build && cmake .. && make
+mkdir build && cd build && qt-cmake .. && cmake --build .
 ```
 
 #### For Android
@@ -63,13 +62,5 @@ mkdir build && cd build && cmake .. && make
 ```sh
 mkdir build && cd build
 /path/to/qt6/bin/qt-cmake -DANDROID_NDK_ROOT=/path/to/ndk -DANDROID_SDK_ROOT=/path/to/sdk ..
-make
-```
-
-* Build with Qt5:
-```sh
-mkdir build && cd build
-export ANDROID_NDK_ROOT=/path/to/ndk ANDROID_SDK_ROOT=/path/to/sdk
-cmake -DCMAKE_SYSTEM_NAME=Android -DCMAKE_ANDROID_ARCH_ABI=arm64-v8a -DQT_CMAKE_ROOT=/path/to/qt/cmake ..
-make
+cmake --build .
 ```
