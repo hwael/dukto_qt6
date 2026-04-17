@@ -44,7 +44,8 @@ set(QT_COMPONENTS Core Gui Network Qml QuickWidgets)
 if(UNIX AND NOT APPLE AND NOT ANDROID)
     list(APPEND QT_COMPONENTS DBus)
 endif()
-# Qt 6.6+ is required for QTP0002 used by Android packaging configuration below.
+# Use a single Qt 6.6+ baseline across all platforms, including Android packaging
+# features that rely on QTP0002.
 find_package(Qt6 6.6 COMPONENTS ${QT_COMPONENTS} REQUIRED)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -175,6 +176,7 @@ If (APPLE)
 endif()
 
 if(ANDROID)
+    # QTP0002 enables modern Android multi-ABI package source handling.
     qt6_policy(SET QTP0002 NEW)
     # get version
     file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.h" ver)
