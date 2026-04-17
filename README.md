@@ -37,8 +37,8 @@ Use [this PPA](https://launchpad.net/~xuzhen666/+archive/ubuntu/dukto)
 
 #### Build Dependencies
 
-* Qt 6.6+ (project-wide baseline; also required for the Android packaging policy used by this project)
-* CMake 3.21+ (for CMake builds)
+* Qt 6.6+ (project-wide baseline; includes support for Android QTP0002 packaging policy)
+* CMake 3.16+ (for CMake builds)
 * libnotify (optional, Linux only)
 * Android SDK and NDK (Android only)
 
@@ -46,7 +46,7 @@ Use [this PPA](https://launchpad.net/~xuzhen666/+archive/ubuntu/dukto)
 
 Run the following command in the source code directory to build:
 
-* QMake (Qt6)
+* QMake (Qt6; use `qmake6` or `qmake` depending on your distro/package names)
 ```sh
 mkdir build && cd build && qmake6 .. && make
 ```

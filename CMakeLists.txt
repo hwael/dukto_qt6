@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 If (APPLE)
     set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
 endif()
