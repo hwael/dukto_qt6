@@ -37,7 +37,7 @@ Use [this PPA](https://launchpad.net/~xuzhen666/+archive/ubuntu/dukto)
 
 #### Build Dependencies
 
-* Qt 6.6+ (project-wide baseline; includes support for Android QTP0002 packaging policy)
+* Qt 6.6+ (project-wide baseline; includes Android packaging support used by this project)
 * CMake 3.16+ (for CMake builds)
 * libnotify (optional, Linux only)
 * Android SDK and NDK (Android only)

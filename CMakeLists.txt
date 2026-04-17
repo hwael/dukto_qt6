@@ -176,7 +176,8 @@ If (APPLE)
 endif()
 
 if(ANDROID)
-    # QTP0002 enables modern Android multi-ABI package source handling.
+    # QTP0002 enables Qt6 Android packaging behavior that correctly resolves
+    # package source directories when building for one or multiple ABIs.
     qt6_policy(SET QTP0002 NEW)
     # get version
     file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.h" ver)
